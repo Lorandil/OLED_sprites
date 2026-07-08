@@ -10,11 +10,31 @@
 // enable support for inverted sprites
 #define _ENABLE_SPRITE_INVERSION_SUPPORT_
 
-// enable support for horizontal flipping the sprites
+// enable support for flipping the sprites horizontally
 #define _ENABLE_SPRITE_HFLIP_SUPPORT_
+
+// enable support for flipping the sprites vertically
+#define _ENABLE_SPRITE_VFLIP_SUPPORT_
 
 // for performance testing without i2c transfers
 //#define _NO_DATA_TRANSFER_
+
+#ifdef _ENABLE_SPRITE_VFLIP_SUPPORT_
+  uint8_t mirrorByte( const uint8_t value )
+  {
+    uint8_t mirrored = 0;
+    if ( value & 0x80 ) mirrored |= 0x01;
+    if ( value & 0x40 ) mirrored |= 0x02;
+    if ( value & 0x20 ) mirrored |= 0x04;
+    if ( value & 0x10 ) mirrored |= 0x08;
+    if ( value & 0x08 ) mirrored |= 0x10;
+    if ( value & 0x04 ) mirrored |= 0x20;
+    if ( value & 0x02 ) mirrored |= 0x40;
+    if ( value & 0x01 ) mirrored |= 0x80;
+
+    return( mirrored );
+  }
+#endif
 
 // sprite header resides in flash [3 bytes per sprite]
 struct SSD1306_SPRITE_HEADER
@@ -42,7 +62,7 @@ struct SSD1306_SPRITE
 enum SSD1306_SPRITE_FLAGS
 {
   hFlip  = 0x10,
-  //vFlip  = 0x20,  // TODO
+  vFlip  = 0x20,
   invert = 0x40,
   undraw = 0x80,
 };
@@ -107,13 +127,13 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
         SSD1306_SPRITE *sprite = &spriteList[n];
         int16_t _spriteStartX = sprite->x;
 
-        // is the sprite visible in this buffer (check chunk end first)?
+        // is the sprite visible in this buffer? (check for chunk end first)
         if ( _spriteStartX < x_chunk_end )
         {
           // read sprite width from flash
           uint8_t spriteWidth = pgm_read_byte( sprite->header + 0 );
 
-          // is the sprite visible in this buffer (check start position)?
+          // is the sprite visible in this buffer? (check start position)
           if ( _spriteStartX + spriteWidth >= x_chunk )
           {
             const int8_t spriteHeightInPages = pgm_read_byte( sprite->header + 1 );
@@ -136,7 +156,6 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
               {
                 // calculate offset to next sprite data row
                 uint8_t spriteLineOffset = spriteWidth;
-                uint16_t bitmapSize = spriteLineOffset * uint8_t( spriteHeightInPages );
 
                 uint16_t bitmapOffset = 0;
                 // clip left
@@ -163,6 +182,7 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                 if ( !( sprite->frameAndFlags & SSD1306_SPRITE_FLAGS::undraw ) )
                 {
                   // add frame offset
+                  const uint16_t bitmapSize = spriteLineOffset * uint8_t( spriteHeightInPages );
                   bitmapOffset += ( sprite->frameAndFlags & spriteFrameMask ) * bitmapSize;
 
                   // calculate bitmap data address
@@ -177,45 +197,106 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                   uint16_t addr = bitmapOffset;
                   uint16_t offsetNextAddr = 1;
                 #endif
+
+                #ifdef _ENABLE_SPRITE_VFLIP_SUPPORT_
+                  bool vFlip = ( sprite->frameAndFlags & SSD1306_SPRITE_FLAGS::vFlip );
+                  uint8_t pageOffset = vFlip ? endPage - page - ( spriteVerticalShift ? 1 : 0 )
+                                             : page - startPage;
+                #else  
+                  uint8_t pageOffset = page - startPage;
+                #endif
+
                   if ( useMask ) { spriteLineOffset <<= 1;
                                    addr <<= 1;
                                    offsetNextAddr <<= 1; }
-                  addr += uint16_t( spriteList[n].header + sizeof( SSD1306_SPRITE_HEADER ) + uint8_t( page - startPage ) * spriteLineOffset );
+                  addr += uint16_t( spriteList[n].header + sizeof( SSD1306_SPRITE_HEADER ) + pageOffset * spriteLineOffset );
 
                   for ( uint8_t x = 0; x < uint8_t( spriteWidth ); x++ )
                   {
-                    uint8_t mask = 0;;
+                    uint8_t mask = 0;
                     uint8_t pixels = 0;
+                    /////////////////////////////////////////////////////////////////////////////////////////
                     // if the sprite doesn't need to be shifted vertically, only one source byte is required
-                    if ( spriteVerticalShift == 0 )
+                    if ( !spriteVerticalShift )
                     {
                       if ( useMask )
                       {
                         mask = pgm_read_byte( addr + 1 ); 
+                      #ifdef _ENABLE_SPRITE_VFLIP_SUPPORT_
+                        if ( vFlip ) { mask = mirrorByte( mask ); }
+                      #endif
                       }
                       pixels = pgm_read_byte( addr );
+                    #ifdef _ENABLE_SPRITE_VFLIP_SUPPORT_
+                      if ( vFlip ) { pixels = mirrorByte( pixels ); }
+                    #endif
                     }
+
+                    /////////////////////////////////////////////////////////////////////////////////////////
                     // otherwise two source bytes are required
                     else
                     {
-                      // not in the last row?
-                      if ( page < endPage )
+                    #ifdef _ENABLE_SPRITE_VFLIP_SUPPORT_
+                      if ( vFlip )
                       {
-                        if ( useMask )
+                        // not in the last row?
+                        if ( page < endPage )
                         {
-                          mask = pgm_read_byte( addr + 1 ) << spriteVerticalShift;
+                          if ( useMask )
+                          {
+                            mask =  mirrorByte( pgm_read_byte( addr + 1 ) );
+                            mask >>= ( 8 - spriteVerticalShift );
+                          }
+                          pixels = mirrorByte( pgm_read_byte( addr ) );
+                          pixels >>= ( 8 - spriteVerticalShift );
                         }
-                        pixels = pgm_read_byte( addr ) << spriteVerticalShift;
+                        // not in the first row?
+                        if ( page > startPage )
+                        {
+                          uint8_t value;
+
+                          // look one row up
+                          if ( useMask )
+                          {
+                            value = mirrorByte( pgm_read_byte( addr - spriteLineOffset + 1 ) );
+                            value <<= spriteVerticalShift;
+                            mask |= value;
+                          }
+                          value = mirrorByte( pgm_read_byte( addr - spriteLineOffset ) );
+                          value <<= spriteVerticalShift;
+                          pixels |= value;
+                        }
                       }
-                      // not in the first row?
-                      if ( page > startPage )
+                      else
+                    #endif
                       {
-                        // look one row up
-                        if ( useMask )
+                        // not in the last row?
+                        if ( page < endPage )
                         {
-                          mask |= pgm_read_byte( addr - spriteLineOffset + 1 ) >> ( 8 - spriteVerticalShift );
+                          if ( useMask )
+                          {
+                            mask = pgm_read_byte( addr + 1 );
+                            mask <<= spriteVerticalShift;
+                          }
+                          pixels = pgm_read_byte( addr );
+                          pixels <<= spriteVerticalShift;
                         }
-                        pixels |= pgm_read_byte( addr - spriteLineOffset ) >> ( 8 - spriteVerticalShift );
+                        // not in the first row?
+                        if ( page > startPage )
+                        {
+                          uint8_t value;
+
+                          // look one row up
+                          if ( useMask )
+                          {
+                            value = pgm_read_byte( addr - spriteLineOffset + 1 ) ;
+                            value >>= ( 8 - spriteVerticalShift );
+                            mask |= value;
+                          }
+                          value = pgm_read_byte( addr - spriteLineOffset );
+                          value >>= ( 8 - spriteVerticalShift );
+                          pixels |= value;
+                        }
                       }
                     }
 

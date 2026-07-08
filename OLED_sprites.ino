@@ -22,31 +22,35 @@ constexpr uint8_t _spriteBufferSize = 64;
 uint8_t _workBuffer[_workBufferSize];
 
 SSD1306_SPRITE _spriteList[] = { 
+  /*
   { 100, -4, SSD1306_SPRITE_FLAGS::hFlip, meteor_w_mask_16x16 },
   {  54, 43, 1, meteor_w_mask_16x16 },
-  {  74, 19, 0, moon_w_mask_30x32 },
   { 140, 28, 3, meteor_w_mask_16x16 },
-  { 114, 38, SSD1306_SPRITE_FLAGS::hFlip, moon_w_mask_30x32 },
   {  90, 52, 0, meteor_w_mask_16x16 },
   {  67, 32, 2, meteor_w_mask_16x16 },
-  {  84, 27, SSD1306_SPRITE_FLAGS::hFlip, moon_30x32 },
+  */
+  {  58, 31,            0               , moon_w_mask_30x32 },
+  //{  86, 24, SSD1306_SPRITE_FLAGS::vFlip, moon_w_mask_30x32 },
+  { 114,  2, SSD1306_SPRITE_FLAGS::vFlip, moon_w_mask_30x32 },
 #ifdef _CRAZY_DEMO_
   { 128,  0, SSD1306_SPRITE_FLAGS::hFlip, Moon128x64 },
 #endif
-  {  10,  0, 0, ship_w_mask_18x16 },
+  {  10,  0,            0               , ship_w_mask_18x16 },
   // placeholders for removal of old sprites
+  /*
   {},
   {},
   {},
   {},
   {},
+  */
   {},
-  {},
-  {},
+  //{},
   {},
 #ifdef _CRAZY_DEMO_
   {},
 #endif
+  {},
 };
 
 void setup() {
@@ -133,7 +137,7 @@ void loop() {
                                     background, 0, 128, 0, 7 ) )
       {
         // "player" was hit
-        _spriteList[spriteCount - 1].frameAndFlags = SSD1306_SPRITE_FLAGS::invert;
+        _spriteList[spriteCount - 1].frameAndFlags = SSD1306_SPRITE_FLAGS::invert; // | SSD1306_SPRITE_FLAGS::vFlip;
       #ifdef _ENABLE_DIAGNOSTICS_
         SSD1306.ssd1306_setpos( 96, 0 );
         SSD1306.ssd1306_string_font6x8( "BOOM!" );
@@ -146,7 +150,7 @@ void loop() {
         SSD1306.ssd1306_string_font6x8( "ok   " );
       #endif
         // everything is fine!
-        _spriteList[spriteCount - 1].frameAndFlags = 0;
+        _spriteList[spriteCount - 1].frameAndFlags = 0; //SSD1306_SPRITE_FLAGS::vFlip;
       }
     
     #ifdef _ENABLE_DIAGNOSTICS_
