@@ -157,7 +157,7 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                 // calculate offset to next sprite data row
                 int16_t spriteLineOffset = spriteWidth;
 
-                uint16_t bitmapOffset = 0;
+                int16_t bitmapOffset = 0;
                 // clip left
                 if ( _spriteStartX < x_chunk )
                 {
@@ -175,14 +175,14 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                 _spriteStartX -= x_chunk;
 
                 // now x is >= 0 and < bufferSize -> uint8_t is good enough
-                const uint16_t spriteStartX = uint16_t( _spriteStartX );
-                const uint16_t spriteEndX = spriteStartX + spriteWidth;
+                const int16_t spriteStartX = uint16_t( _spriteStartX );
+                const int16_t spriteEndX = spriteStartX + spriteWidth;
 
                 // should the sprite be drawn?
                 if ( !( sprite->frameAndFlags & SSD1306_SPRITE_FLAGS::undraw ) )
                 {
                   // add frame offset
-                  const uint16_t bitmapSize = spriteLineOffset * uint8_t( spriteHeightInPages );
+                  const int16_t bitmapSize = spriteLineOffset * int8_t( spriteHeightInPages );
                   bitmapOffset += ( sprite->frameAndFlags & spriteFrameMask ) * bitmapSize;
 
                   // calculate bitmap data address
@@ -190,12 +190,12 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                   // horizontal flip?
                   bool hFlip = ( sprite->frameAndFlags & SSD1306_SPRITE_FLAGS::hFlip );
                   // flip to the other side of the sprite
-                  uint16_t addr = hFlip ? spriteLineOffset - 1 - bitmapOffset
+                  int16_t addr = hFlip ? spriteLineOffset - 1 - bitmapOffset
                                         : bitmapOffset;
-                  uint16_t offsetNextAddr = hFlip ? -1 : 1;
+                  int16_t offsetNextAddr = hFlip ? -1 : 1;
                 #else
-                  uint16_t addr = bitmapOffset;
-                  uint16_t offsetNextAddr = 1;
+                  int16_t addr = bitmapOffset;
+                  int16_t offsetNextAddr = 1;
                 #endif
 
                   int8_t pageOffset = page - startPage;
@@ -208,7 +208,7 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                   if ( useMask ) { spriteLineOffset <<= 1;
                                    addr <<= 1;
                                    offsetNextAddr <<= 1; }
-                  addr += uint16_t( sizeof( SSD1306_SPRITE_HEADER ) + pageOffset * spriteLineOffset + spriteList[n].header );
+                  addr += int16_t( sizeof( SSD1306_SPRITE_HEADER ) + pageOffset * spriteLineOffset + spriteList[n].header );
 
                   for ( uint8_t x = 0; x < uint8_t( spriteWidth ); x++ )
                   {
@@ -236,7 +236,7 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                     else
                     {
                     #ifdef _ENABLE_SPRITE_VFLIP_SUPPORT_
-                      uint16_t otherLineAddr = addr;
+                      int16_t otherLineAddr = addr;
                       if ( vFlip )
                       {
                         otherLineAddr += spriteLineOffset;
@@ -247,7 +247,7 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                       }
                     #else
                       // calculate offset to the next line
-                      uint16_t otherAddr = addr - spriteLineOffset;
+                      int16_t otherAddr = addr - spriteLineOffset;
                     #endif
 
                       // not in the last row?
