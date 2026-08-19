@@ -63,6 +63,7 @@ enum SSD1306_SPRITE_FLAGS
 {
   hFlip  = 0x10,
   vFlip  = 0x20,
+  hvFlip = hFlip | vFlip, // flip horizontally and vertically
   invert = 0x40,
   undraw = 0x80,
 };
