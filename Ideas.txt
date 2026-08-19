@@ -1,17 +1,13 @@
 Future ideas
 
-- mirror flag 
-  - vertical (requires mirror table, maybe nibble based?)
-
-- make animation support optional (code size)?
-
-- require flags in RAM, ... maybe change frame byte to 4 bit flags and 4 bits for frame number. 
+  - make animation support optional (code size)?
   - delete flag requires special treatment
 
-- optimize arithmetics for flash size (uint8_t is more expensive than int8_t - why???)
+  - optimize arithmetics for flash size (uint8_t is more expensive than int8_t - why???)
 
-- convert to assembly for more speed and smaller code
+  - convert to assembly for more speed and smaller code
 
 Already achieved
   + horizontal mirroring (easy)
+  + vertical mirroring 
   + inversion effect for sprites with mask (e.g. when hit)

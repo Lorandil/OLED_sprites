@@ -144,7 +144,7 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
             const bool useMask = ( spriteAttributes < 0 );
 
             // calculate start and end page
-            const int8_t startPage = sprite->y >> 3;
+            int8_t startPage = sprite->y >> 3;
 
             // is the sprite visible on this page?
             if ( page >= startPage )
@@ -155,7 +155,7 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
               if ( page <= endPage )
               {
                 // calculate offset to next sprite data row
-                uint8_t spriteLineOffset = spriteWidth;
+                int16_t spriteLineOffset = spriteWidth;
 
                 uint16_t bitmapOffset = 0;
                 // clip left
@@ -175,8 +175,8 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                 _spriteStartX -= x_chunk;
 
                 // now x is >= 0 and < bufferSize -> uint8_t is good enough
-                const uint8_t spriteStartX = uint8_t( _spriteStartX );
-                const uint8_t spriteEndX = spriteStartX + spriteWidth;
+                const uint16_t spriteStartX = uint16_t( _spriteStartX );
+                const uint16_t spriteEndX = spriteStartX + spriteWidth;
 
                 // should the sprite be drawn?
                 if ( !( sprite->frameAndFlags & SSD1306_SPRITE_FLAGS::undraw ) )
@@ -198,18 +198,17 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                   uint16_t offsetNextAddr = 1;
                 #endif
 
+                  int8_t pageOffset = page - startPage;
                 #ifdef _ENABLE_SPRITE_VFLIP_SUPPORT_
                   bool vFlip = ( sprite->frameAndFlags & SSD1306_SPRITE_FLAGS::vFlip );
-                  uint8_t pageOffset = vFlip ? endPage - page - ( spriteVerticalShift ? 1 : 0 )
-                                             : page - startPage;
-                #else  
-                  uint8_t pageOffset = page - startPage;
+                  if ( vFlip ) { pageOffset = endPage - page;
+                                 pageOffset += spriteVerticalShift ? -1 : 0; }
                 #endif
 
                   if ( useMask ) { spriteLineOffset <<= 1;
                                    addr <<= 1;
                                    offsetNextAddr <<= 1; }
-                  addr += uint16_t( spriteList[n].header + sizeof( SSD1306_SPRITE_HEADER ) + pageOffset * spriteLineOffset );
+                  addr += uint16_t( sizeof( SSD1306_SPRITE_HEADER ) + pageOffset * spriteLineOffset + spriteList[n].header );
 
                   for ( uint8_t x = 0; x < uint8_t( spriteWidth ); x++ )
                   {
@@ -221,7 +220,7 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                     {
                       if ( useMask )
                       {
-                        mask = pgm_read_byte( addr + 1 ); 
+                        mask = pgm_read_byte( addr + 1 );
                       #ifdef _ENABLE_SPRITE_VFLIP_SUPPORT_
                         if ( vFlip ) { mask = mirrorByte( mask ); }
                       #endif
@@ -237,66 +236,50 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                     else
                     {
                     #ifdef _ENABLE_SPRITE_VFLIP_SUPPORT_
+                      uint16_t otherLineAddr = addr;
                       if ( vFlip )
                       {
-                        // not in the last row?
-                        if ( page < endPage )
-                        {
-                          if ( useMask )
-                          {
-                            mask =  mirrorByte( pgm_read_byte( addr + 1 ) );
-                            mask >>= ( 8 - spriteVerticalShift );
-                          }
-                          pixels = mirrorByte( pgm_read_byte( addr ) );
-                          pixels >>= ( 8 - spriteVerticalShift );
-                        }
-                        // not in the first row?
-                        if ( page > startPage )
-                        {
-                          uint8_t value;
-
-                          // look one row up
-                          if ( useMask )
-                          {
-                            value = mirrorByte( pgm_read_byte( addr - spriteLineOffset + 1 ) );
-                            value <<= spriteVerticalShift;
-                            mask |= value;
-                          }
-                          value = mirrorByte( pgm_read_byte( addr - spriteLineOffset ) );
-                          value <<= spriteVerticalShift;
-                          pixels |= value;
-                        }
+                        otherLineAddr += spriteLineOffset;
                       }
                       else
-                    #endif
                       {
-                        // not in the last row?
-                        if ( page < endPage )
-                        {
-                          if ( useMask )
-                          {
-                            mask = pgm_read_byte( addr + 1 );
-                            mask <<= spriteVerticalShift;
-                          }
-                          pixels = pgm_read_byte( addr );
-                          pixels <<= spriteVerticalShift;
-                        }
-                        // not in the first row?
-                        if ( page > startPage )
-                        {
-                          uint8_t value;
+                        otherLineAddr -= spriteLineOffset;                    
+                      }
+                    #else
+                      // calculate offset to the next line
+                      uint16_t otherAddr = addr - spriteLineOffset;
+                    #endif
 
-                          // look one row up
-                          if ( useMask )
-                          {
-                            value = pgm_read_byte( addr - spriteLineOffset + 1 ) ;
-                            value >>= ( 8 - spriteVerticalShift );
-                            mask |= value;
-                          }
-                          value = pgm_read_byte( addr - spriteLineOffset );
-                          value >>= ( 8 - spriteVerticalShift );
-                          pixels |= value;
+                      // not in the last row?
+                      if ( page < endPage )
+                      {
+                        if ( useMask )
+                        {
+                          mask = pgm_read_byte( addr + 1 );
+                          if ( vFlip ) { mask = mirrorByte( mask ); }
+                          mask <<= spriteVerticalShift;
                         }
+                        pixels = pgm_read_byte( addr );
+                        if ( vFlip ) { pixels = mirrorByte( pixels ); }
+                        pixels <<= spriteVerticalShift;
+                      }
+                      // not in the first row?
+                      if ( page > startPage )
+                      {
+                        uint8_t value;
+
+                        // look one row up
+                        if ( useMask )
+                        {
+                          value = pgm_read_byte( otherLineAddr + 1 );
+                          if ( vFlip ) { value = mirrorByte( value ); }
+                          value >>= ( 8 - spriteVerticalShift );
+                          mask |= value;
+                        }
+                        value = pgm_read_byte( otherLineAddr );
+                        if ( vFlip ) { value = mirrorByte( value ); }
+                        value >>= ( 8 - spriteVerticalShift );
+                        pixels |= value;
                       }
                     }
 
@@ -309,7 +292,7 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                       //   for separating the sprite from the background and not part of the collision area
                       // - pixel data covers the visible parts of the sprite, but might contain holes that 
                       //   *are* part of the collision area..
-                      // We got with pixels here nonetheless ;)
+                      // We go with pixels here nonetheless ;)
                       //if ( collisionBuffer[spriteStartX + x] & mask ) { collision = true; }
                       if ( collisionBuffer[spriteStartX + x] & pixels ) { collision = true; }
                     }
