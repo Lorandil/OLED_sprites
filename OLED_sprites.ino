@@ -9,43 +9,41 @@
 // checks and displays also collision of player sprite with other sprites
 #define _ENABLE_DIAGNOSTICS_
 
-// add the background image as a sprite - because we can
+// add the background image as a sprite (flipped vertically and horizontally) - because we can
 //#define _CRAZY_DEMO_
 
-// global RAM buffer
-constexpr uint8_t _spriteBufferSize = 64;
+/////////////////////////////////////////////////////////////////////////////
+// RAM buffer management
+constexpr uint16_t _spriteBufferSize = 64;
 #ifdef _ENABLE_COLLISION_CHECKS_
-  constexpr uint8_t _workBufferSize = 3 * _spriteBufferSize;
+  constexpr uint16_t _workBufferSize = 3 * _spriteBufferSize;
 #else
-  constexpr uint8_t _workBufferSize = 2 * _spriteBufferSize;
+  constexpr uint16_t _workBufferSize = 2 * _spriteBufferSize;
 #endif
+// global RAM buffer
 uint8_t _workBuffer[_workBufferSize];
 
 SSD1306_SPRITE _spriteList[] = { 
-  /*
   { 100, -4, SSD1306_SPRITE_FLAGS::hFlip, meteor_w_mask_16x16 },
-  {  54, 43, 1, meteor_w_mask_16x16 },
-  { 140, 28, 3, meteor_w_mask_16x16 },
-  {  90, 52, 0, meteor_w_mask_16x16 },
-  {  67, 32, 2, meteor_w_mask_16x16 },
-  */
+  {  54, 43,            1               , meteor_w_mask_16x16 },
+  { 140, 28,            3               , meteor_w_mask_16x16 },
+  {  90, 52,            0               , meteor_w_mask_16x16 },
+  {  67, 32,            2               , meteor_w_mask_16x16 },
   {  58, 31,            0               , moon_w_mask_30x32 },
-  //{  86, 24, SSD1306_SPRITE_FLAGS::vFlip, moon_w_mask_30x32 },
+  {  86, 24, SSD1306_SPRITE_FLAGS::hFlip | SSD1306_SPRITE_FLAGS::vFlip, moon_w_mask_30x32 },
   { 114,  2, SSD1306_SPRITE_FLAGS::vFlip, moon_w_mask_30x32 },
 #ifdef _CRAZY_DEMO_
-  { 128,  0, SSD1306_SPRITE_FLAGS::hFlip, Moon128x64 },
+  { 128,  0, SSD1306_SPRITE_FLAGS::hFlip | SSD1306_SPRITE_FLAGS::vFlip, Moon128x64 },
 #endif
   {  10,  0,            0               , ship_w_mask_18x16 },
   // placeholders for removal of old sprites
-  /*
   {},
   {},
   {},
   {},
   {},
-  */
   {},
-  //{},
+  {},
   {},
 #ifdef _CRAZY_DEMO_
   {},

@@ -247,7 +247,7 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                       }
                     #else
                       // calculate offset to the next line
-                      int16_t otherAddr = addr - spriteLineOffset;
+                      int16_t otherLineAddr = addr - spriteLineOffset;
                     #endif
 
                       // not in the last row?
@@ -256,11 +256,15 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                         if ( useMask )
                         {
                           mask = pgm_read_byte( addr + 1 );
+                        #ifdef _ENABLE_SPRITE_VFLIP_SUPPORT_
                           if ( vFlip ) { mask = mirrorByte( mask ); }
+                        #endif
                           mask <<= spriteVerticalShift;
                         }
                         pixels = pgm_read_byte( addr );
+                      #ifdef _ENABLE_SPRITE_VFLIP_SUPPORT_
                         if ( vFlip ) { pixels = mirrorByte( pixels ); }
+                      #endif  
                         pixels <<= spriteVerticalShift;
                       }
                       // not in the first row?
@@ -272,12 +276,16 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                         if ( useMask )
                         {
                           value = pgm_read_byte( otherLineAddr + 1 );
+                        #ifdef _ENABLE_SPRITE_VFLIP_SUPPORT_
                           if ( vFlip ) { value = mirrorByte( value ); }
+                        #endif
                           value >>= ( 8 - spriteVerticalShift );
                           mask |= value;
                         }
                         value = pgm_read_byte( otherLineAddr );
+                      #ifdef _ENABLE_SPRITE_VFLIP_SUPPORT_
                         if ( vFlip ) { value = mirrorByte( value ); }
+                      #endif
                         value >>= ( 8 - spriteVerticalShift );
                         pixels |= value;
                       }
