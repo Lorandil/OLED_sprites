@@ -174,15 +174,15 @@ bool ssd1306_draw_sprites_px( uint8_t *workBuffer, const uint8_t workBufferSize,
                 // normalize sprite x position
                 _spriteStartX -= x_chunk;
 
-                // now x is >= 0 and < bufferSize -> uint8_t is good enough
-                const int16_t spriteStartX = uint16_t( _spriteStartX );
+                // now x is >= 0 and < bufferSize
+                const int16_t spriteStartX = _spriteStartX;
                 const int16_t spriteEndX = spriteStartX + spriteWidth;
 
                 // should the sprite be drawn?
                 if ( !( sprite->frameAndFlags & SSD1306_SPRITE_FLAGS::undraw ) )
                 {
                   // add frame offset
-                  const int16_t bitmapSize = spriteLineOffset * int8_t( spriteHeightInPages );
+                  const int16_t bitmapSize = spriteLineOffset * spriteHeightInPages;
                   bitmapOffset += ( sprite->frameAndFlags & spriteFrameMask ) * bitmapSize;
 
                   // calculate bitmap data address
